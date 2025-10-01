@@ -106,9 +106,21 @@ data_chunks <- nodes_comp %>% split(., ceiling(seq_along(row_number(.)) / (lengt
 nodes_comp <- foreach(chunk = data_chunks, .combine = rbind, .packages = c("dplyr", "dtplyr","sf","sfnetworks","tidygraph")) %dopar% {
   chunk %>% rowwise() %>%
     mutate(
-      Shreve(net_comp, .$ID)
+      Shreve(net_comp, ID)
     )
 }
 
+# add info to edges
+edges_comp <- nodes_comp %>% mutate(from = ID) %>% select(from, Shreve) %>%
+  st_drop_geometry() %>% left_join(mutate(edges_comp, from = as.character(from)), ., by = "from")
+
 # visualize
-tm_shape(edges_comp)+tm_lines(lwd = 2)+tm_shape(nodes_comp)+tm_dots(col = "Shreve", id = "ID")
+tm_shape(edges_comp)+tm_lines(lwd = 2, col = "Shreve")
+
+edges_comp %>% ggplot()+
+  geom_histogram(
+    aes(x = Shreve),
+    fill = "#99CCCC",
+    colour = "#000000",
+    bins = 10
+  )
