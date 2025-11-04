@@ -269,4 +269,4 @@ for(k in cluster_range) {
 print("\n=== PERMANOVA COMPARISON ===")
 
 # Test explanatory power of different cluster solutions
-permanova_results <- data.fram
+permanova_results <- data.frame()
