@@ -3,6 +3,7 @@ library(dplyr)
 library(readxl)
 library(tidyverse)
 library(cluster)
+library(mclust)
 
 # Load data
 annual_means <- read_excel("Output data/3_seasonal_annual_environmental_means_2009-2023.xlsx")
@@ -269,4 +270,4 @@ for(k in cluster_range) {
 print("\n=== PERMANOVA COMPARISON ===")
 
 # Test explanatory power of different cluster solutions
-permanova_results <- data.fram
+permanova_results <- data.frame()

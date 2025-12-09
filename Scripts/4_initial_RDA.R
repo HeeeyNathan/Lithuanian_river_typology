@@ -111,3 +111,4 @@ table(site_data$river_type)
 # Check correlations between geographic and environmental variables
 cor_matrix <- cor(env_matrix[, c("latitude", "longitude", "elevation", "temp", "flow", "total_N", "total_P")])
 print(round(cor_matrix, 3))
+
