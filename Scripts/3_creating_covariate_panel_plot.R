@@ -30,14 +30,6 @@ gdb_path <- "C:/Users/natha/OneDrive - Gamtos Tyrimu Centras/Data/Lithuanian dat
 rivers <- st_read(gdb_path, layer = "upes_l") |>
   st_transform(4326) # Reproject to WGS84
 
-rivers_cast <- st_cast(rivers, "LINESTRING")
-river_net <- as_sfnetwork(rivers_cast)
-
-
-
-lakes <- st_read(gdb_path, layer = "ezerai_tvenkiniai") |>
-  st_transform(4326)  # Reproject to WGS84
-
 #====== Get Lithuania boundary ======
 lithuania_sf <- geoboundaries("Lithuania", adm_lvl = 0)
 lithuania_spat <- terra::vect(lithuania_sf)
