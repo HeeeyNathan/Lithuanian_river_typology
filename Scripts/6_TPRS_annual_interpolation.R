@@ -71,13 +71,11 @@ cat("LOADING DATA\n")
 cat("========================================\n\n")
 
 # Load the seasonal/annual means data
-annual_means <- read_excel("Output data/3_seasonal_annual_environmental_means_2009-2023.xlsx")
+annual_means <- read_excel("Output data/1_annual_environmental_means_2009-2023.xlsx")
 
 # ------------------------------------------------------------------------------
 # Load spatial data: country boundary and river network
 # ------------------------------------------------------------------------------
-
-cat("Loading spatial data...\n")
 
 # Lithuania boundary
 lithuania_sf <- geoboundaries("Lithuania", adm_lvl = 0)
@@ -92,31 +90,35 @@ cat(paste0("  Rivers loaded: ", nrow(rivers), " features\n"))
 env_vars <- c(
   # Physical-chemical
   "temp", "pH", "EC", "alkalinity",
-  # "DO_mg",
+  # "DO_mg", "DO_pct",
   # # Nutrients
-  # "total_N", "total_P", "NO3_N", "PO4_P",
+  # "total_N", "total_P", "NO3_N", "NO2_N", "PO4_P", "min_N", "ChDS_C",
   # # Pollution indicators
-  # "BOD7", "suspended_solids", "NH4_N"
+  # "BOD7", "suspended_solids", "NH4_N",
   # Hydrological
   "current", "flow_velocity"
 )
 
 # Create standardised variable names mapping
 var_mapping <- c(
-  "temp" = "temp[°C]_ann",
-  "pH" = "pH_ann",
-  "EC" = "EC[µS/cm]_ann",
-  "alkalinity" = "alkalinity[mmol/l]_ann",
-  # "DO_mg" = "D.O.[mg/l]_ann",
-  # "total_N" = "total_N[mg/L]_ann",
-  # "total_P" = "total_P[mg/L]_ann",
-  # "NO3_N" = "NO3_N[mg/L]_ann",
-  # "PO4_P" = "PO4_P[mg/L]_ann",
-  # "BOD7" = "BOD7[mg/L]_ann",
-  # "suspended_solids" = "suspended_solids[mg/l]_ann",
-  # "NH4_N" = "NH4_N[mg/L]_ann",
-  "current" = "flow[m3/s]_ann",
-  "flow_velocity" = "velocity[m/s]_ann"
+  "temp" = "temp_annual",
+  "pH" = "pH_annual",
+  "EC" = "EC_annual",
+  "alkalinity" = "alkalinity_annual",
+  # "DO_mg" = "DO_mgl_annual",
+  # "DO_pct" = "DO_pct_annual"
+  # "total_N" = "total_N_annual",
+  # "total_P" = "total_P_annual",
+  # "NO3_N" = "NO3_N_annual",
+  # "NO2_N" = "NO2_N_annual"
+  # "PO4_P" = "PO4_P_annual",
+  # "BOD7" = "BOD7_annual",
+  # "min_N" = "mineral_N_annual",
+  # "ChDS_C" = "ChDS_C_annual",
+  # "suspended_solids" = "suspended_solids_annual",
+  # "NH4_N" = "NH4_N_annual",
+  "current" = "flow_annual",
+  "flow_velocity" = "velocity_annual"
 )
 
 # Filter for complete seasonal coverage and prepare data
@@ -187,8 +189,6 @@ cat(paste0("  Latitude: ", round(min(pred_grid$latitude), 3), " to ",
            round(max(pred_grid$latitude), 3), "\n"))
 cat(paste0("  Resolution: ", GRID_RESOLUTION, " x ", GRID_RESOLUTION, "\n"))
 cat(paste0("  Total grid points: ", nrow(pred_grid), "\n"))
-
-plot(pred_grid)
 
 # ===============================================================================
 # 4. TPRS FITTING FUNCTION

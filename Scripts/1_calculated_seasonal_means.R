@@ -1,5 +1,14 @@
-# Lithuanian River Data Analysis - Simple Seasonal Approach
-# Clean, transparent calculation of seasonal weighted annual means
+############################################################
+# CALCULATE ANNUAL MEANS FROM RAW ENVIRONMENTAL DATA
+# - Input data: Input data/2_environmental_data_2009-2023.xlsx
+# - Source: Lithuanian Environmental Protection Agency WFD water quality monitoring
+# - Outputs:
+#     * Spreadsheet containing calculated annual environmental means for 2009-2023 and various metadata
+############################################################
+
+# =============================================================================
+# LOAD PACKAGES
+# =============================================================================
 
 library(dplyr)
 library(tidyr)
@@ -236,3 +245,12 @@ complete_data <- annual_means |> filter(data_quality == "complete")
 
 # 6. Save
 write_xlsx(annual_means, "Output data/1_annual_environmental_means_2009-2023.xlsx")
+
+#==================== CLEAN UP WORKSPACE =====================
+library(pacman)
+rm(list = ls())       # Remove all objects from environment
+gc()                  # Frees up unused memory
+p_unload(all)         # Unload all loaded packages
+graphics.off()        # Close all graphical devices
+cat("\014")           # Clear the console
+# Clear mind :)

@@ -17,7 +17,7 @@ library(sf)
 library(rgeoboundaries)
 library(elevatr)
 library(terra)
-library(ggplot2)   # for plotting
+library(ggplot2)
 
 #==================== 2. CONFIGURATION =====================
 
@@ -30,7 +30,6 @@ GRID_RESOLUTION  <- 300      # 300 × 300 grid
 EXTENT_BUFFER    <- 0.05     # 5% buffer around site extent
 
 PLOTS_DIR        <- "Plots"
-if (!dir.exists(PLOTS_DIR)) dir.create(PLOTS_DIR, recursive = TRUE)
 
 #==================== 3. LOAD ANNUAL MEANS & GET EXTENT =====================
 
@@ -298,6 +297,7 @@ write.csv(grid_clip, CLIPPED_GRID_OUT_FILE, row.names = FALSE)
 cat(paste0("Clipped grid saved → ", CLIPPED_GRID_OUT_FILE, "\n"))
 
 #==================== 10. CLEAN UP WORKSPACE =====================
+library(pacman)
 rm(list = ls())       # Remove all objects from environment
 gc()                  # Frees up unused memory
 p_unload(all)         # Unload all loaded packages

@@ -1,6 +1,15 @@
-# Panel plot for paper
+############################################################
+# CREATING PLOT OF SAMPLING SITES USED FOR INTERPOLATION
+# - Input data: Input data/1_site_factors_2009-2023.xlsx
+# - Source: Lithuanian Environmental Protection Agency WFD water quality monitoring
+# - Data: GeoDataBase of LT rivers (stored locally), CORINE Land Cover 2018 raster data (stored locally)
+# - Outputs:
+#     * Plot of sampling sites
+#     * Plot of landuse in Lithuania
+############################################################
 
-#==================== Sampling sites ===================
+#==================== Sampling site plot ===================
+
 #====== Load packages ======
 library(tidyverse)
 library(ggplot2)
@@ -9,7 +18,6 @@ library(rgeoboundaries)
 library(grid)
 library(readr)
 library(ggspatial)
-library(pacman)
 library(readxl)
 library(sfnetworks)
 
@@ -123,7 +131,7 @@ sampling_sites <- sampling_sites +
     width_hint = 0.25
   )
 
-ggsave("Plots/Figure1_Sampling_sites.png", plot = sampling_sites, width = 10, height = 8, dpi = 450, bg = "white")
+ggsave("Plots/Figure1_Sampling_sites.png", plot = sampling_sites, width = 10, height = 9, dpi = 450, bg = "white")
 
 #==================== CORINE Land Cover ===================
 #====== Load packages ======
@@ -286,6 +294,7 @@ ggsave("Plots/Figure2_Landcover.png", plot = landcover_plot, width = 10, height 
 
 ###############################################################################################################
 # CLEAN UP WORKSPACE
+library(pacman)
 rm(list = ls())       # Remove all objects from environment
 gc()                  # Frees up unused memory
 p_unload(all)         # Unload all loaded packages
