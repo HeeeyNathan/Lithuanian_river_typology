@@ -22,17 +22,20 @@
 # ===============================================================================
 
 # Load required libraries
-library(mgcv)          # For GAM and thin plate splines
-library(dplyr)         # Data manipulation
-library(tidyr)         # Data tidying
-library(readxl)        # Read Excel files
-library(ggplot2)       # Plotting
-library(viridis)       # Color palettes
-library(patchwork)     # Combine plots
-library(metR)          # Contour/isoline plotting
-library(sf)            # Spatial data handling
+library(mgcv)           # For GAM and thin plate splines
+library(dplyr)          # Data manipulation
+library(tidyr)          # Data tidying
+library(readxl)         # Read Excel files
+library(ggplot2)        # Plotting
+library(viridis)        # Color palettes
+library(patchwork)      # Combine plots
+library(metR)           # Contour/isoline plotting
+library(sf)             # Spatial data handling
 library(rgeoboundaries) # Country boundaries
-library(ggspatial)     # Spatial plotting utilities
+library(ggspatial)      # Spatial plotting utilities
+library(fmesher)        # Fast spatial meshing
+library(terra)          # Raster data handling
+source(file = "Additional functions/HighstatLibV15.R") # <---- the use of these functions requires a citation: Zuur, A.F., Ieno, E.N., Walker, N., Saveliev, A.A., Smith, G.M., 2009. Mixed Effects Models and Extensions in Ecology with R. Springer, New York https://doi.org/10.1007/978-0-387-87458-6.
 
 # ===============================================================================
 # 1. CONFIGURATION
@@ -50,7 +53,7 @@ TPRS_K <- 60 # original was 30
 # Prediction grid resolution (300x300)
 # Lithuania spans roughly 4° longitude (~300 km) and 2° latitude (~220 km)
 # With 300 cells: each cell is ~1 km × `~0.73 km
-GRID_RESOLUTION <- 300 # original was 100
+GRID_RESOLUTION <- 25 # original was 100
 
 # Buffer around data extent (proportion)
 EXTENT_BUFFER <- 0.05
@@ -80,6 +83,15 @@ annual_means <- read_excel("Output data/1_annual_environmental_means_2009-2023.x
 # Lithuania boundary
 lithuania_sf <- geoboundaries("Lithuania", adm_lvl = 0)
 cat("  Lithuania boundary loaded\n")
+
+#' Convert longitude and latitude to UTM in zone 20. The UTM_Transform function is on our support file.
+XY.utm <- UTM_Transform(x = annual_means$longitude,
+                        y = annual_means$latitude,
+                        zone = 34,
+                        Hemisphere = "north")
+
+annual_means$Xkm <- XY.utm[,"X"] / 1000
+annual_means$Ykm <- XY.utm[,"Y"] / 1000
 
 # Rivers from geodatabase
 rivers <- st_read(GDB_PATH, layer = "upes_l", quiet = TRUE) |>
@@ -159,13 +171,100 @@ valid_years <- year_summary |>
 cat(paste0("\nYears with sufficient data (>= ", MIN_SITES_PER_YEAR, " sites): ",
            length(valid_years), "\n"))
 
+#  How many observations do we have per location per year?
+annual_means <- annual_means |>
+  group_by(site_id) |>
+  mutate(
+    observation_period = max(year) - min(year) + 1,
+    sampling_events = n_distinct(year)
+  ) |>
+  ungroup()
+
+annual_means[, c("site_id", "observation_period", "sampling_events")] |> unique()
+
+#'  Missing values?
+colSums(is.na(annual_means[17:34]))
+round(100 * colSums(is.na(annual_means[17:34])) / nrow(annual_means[17:34]), 2)
+
+# How unique sites for we have?
+NROW(unique(annual_means$site_id))
+
+# How sites were sampled per year?
+table(annual_means$year)
+
+#  Average number of sites sampled per year (overall)
+annual_means |>
+  group_by(year) |>
+  summarise(num_sites = n_distinct(site_id)) |>
+  summarise(avg_sites = mean(num_sites))
+
+# Average distance between sites by year
+# Function to calculate mean pairwise distance within a group of sites
+calc_mean_distance <- function(x, y) {
+  if (length(x) <= 1) {
+    return(NA)  # Need at least 2 sites to calculate distance
+  }
+
+  site_pairs <- combn(length(x), 2)
+  distances <- numeric(ncol(site_pairs))
+
+  for (i in 1:ncol(site_pairs)) {
+    idx1 <- site_pairs[1, i]
+    idx2 <- site_pairs[2, i]
+    distances[i] <- sqrt((x[idx1] - x[idx2])^2 + (y[idx1] - y[idx2])^2)
+  }
+
+  return(mean(distances))
+}
+
+# Average distance between sites per year
+annual_means |>
+  dplyr::select(year, site_id, Xkm, Ykm) |>
+  distinct() |>
+  group_by(year) |>
+  summarise(
+    num_sites = n_distinct(site_id),
+    avg_distance = calc_mean_distance(Xkm, Ykm)) |>
+  summarise(avg_dist_sites = mean(avg_distance))
+
+# Get a dataframe containing the unique sampling sites used in the analysis (not duplicated)
+unique_sites <- annual_means |>
+  group_by(site_id) |>
+  dplyr::summarize(
+    latitude = first(latitude),
+    longitude = first(longitude),
+    Xkm = first(Xkm),
+    Ykm = first(Ykm),
+    observation_count = n()
+  ) |>
+  ungroup() |>
+  dplyr::arrange(site_id)
+
+unique_sites |>
+  dplyr::summarise(
+    mean_observation_period = mean(observation_count, na.rm = TRUE),
+    min_observation_period = min(observation_count, na.rm = TRUE),
+    max_observation_period = max(observation_count, na.rm = TRUE),
+    mode_observation_period = get_mode(observation_count),
+    range_observation_period = max(observation_count, na.rm = TRUE) - min(observation_count, na.rm = TRUE)
+  )
+
 # ===============================================================================
 # 3. CREATE PREDICTION GRID
 # ===============================================================================
 
-cat("\n========================================\n")
-cat("CREATING PREDICTION GRID\n")
-cat("========================================\n\n")
+# Get a sense what the distances are between the sampling locations are.
+Loc <- cbind(unique_sites$Xkm, unique_sites$Ykm)
+
+#' Distances between sites (i.e. trees).
+D <- dist(Loc)
+par(mfrow = c(1,1), mar = c(5,5,2,2))
+hist(D,
+     freq = TRUE,
+     main = "",
+     xlab = "Distance between sites (km)",
+     ylab = "Frequency")
+abline(v = 50, col = "red", lwd = 2, lty = 2)
 
 # Calculate spatial extent with buffer
 lon_range <- range(site_year_data$longitude, na.rm = TRUE)
@@ -189,6 +288,8 @@ cat(paste0("  Latitude: ", round(min(pred_grid$latitude), 3), " to ",
            round(max(pred_grid$latitude), 3), "\n"))
 cat(paste0("  Resolution: ", GRID_RESOLUTION, " x ", GRID_RESOLUTION, "\n"))
 cat(paste0("  Total grid points: ", nrow(pred_grid), "\n"))
+
+plot(pred_grid)
 
 # ===============================================================================
 # 4. TPRS FITTING FUNCTION
