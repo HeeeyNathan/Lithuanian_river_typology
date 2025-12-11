@@ -36,21 +36,21 @@ VARIABLES_TO_KRIGE <- c(
   "flow_annual",
   "velocity_annual",
   "pH_annual",
- "temp_annual",
+  "temp_annual",
   "EC_annual",
-  "alkalinity_annual"
   # "suspended_solids_annual",
-  # "DO_mgl_annual",
+  "DO_mgl_annual",
   # "DO_pct_annual",
   # "BOD7_annual",
-  # "ChDS_C_annual",
+  "ChDS_C_annual",
   # "NH4_N_annual",
   # "NO2_N_annual",
   # "NO3_N_annual",
   # "mineral_N_annual",
   # "total_N_annual",
-  # "PO4_P_annual",
-  # "total_P_annual"
+  # # "PO4_P_annual",
+  # "total_P_annual",
+  "alkalinity_annual"
 )
 
 # 2.4 Variable labels and units ----
