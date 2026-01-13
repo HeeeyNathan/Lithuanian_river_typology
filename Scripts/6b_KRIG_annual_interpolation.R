@@ -113,12 +113,12 @@ LITHUANIA_BUFFER_KM <- 10   # Buffer around Lithuania border (km) to ensure bord
 
 raw_data <- read_xlsx(DATA_FILE)
 
-cat("Data dimensions:", nrow(raw_data), "rows x", ncol(raw_data), "cols\n")
-cat("Years in data:", paste(sort(unique(raw_data[[year_col]])), collapse = ", "), "\n")
+c("Data dimensions:", nrow(raw_data), "rows x", ncol(raw_data), "cols\n")
+c("Years in data:", paste(sort(unique(raw_data[[year_col]])), collapse = ", "), "\n")
 
 #==================== 4. CREATE AVERAGED DATASET FOR GRID OPTIMIZATION ====
 
-cat("Using variable:", GRID_OPT_VARIABLE, "\n")
+c("Using variable:", GRID_OPT_VARIABLE, "\n")
 
 # Average the grid optimization variable across all years for each unique site
 # This uses ALL sites, not just those with complete records
@@ -131,7 +131,7 @@ grid_opt_data <- raw_data |>
     .groups = "drop"
   )
 
-cat("Grid optimization dataset:", nrow(grid_opt_data), "unique sites\n")
+c("Grid optimization dataset:", nrow(grid_opt_data), "unique sites\n")
 
 #==================== 5. TRANSFORM COORDINATES TO UTM (km) & CENTRE ====
 
@@ -152,7 +152,7 @@ all_coords_utm <- st_coordinates(all_sf) / 1000
 x_centroid <- mean(all_coords_utm[, 1])
 y_centroid <- mean(all_coords_utm[, 2])
 
-cat("Centroid (UTM km): x =", round(x_centroid, 3), ", y =", round(y_centroid, 3), "\n")
+c("Centroid (UTM km): x =", round(x_centroid, 3), ", y =", round(y_centroid, 3), "\n")
 
 # Centre coordinates
 grid_opt_coords_centred <- data.frame(
@@ -171,7 +171,7 @@ lith_poly_utm <- st_transform(lith_poly, crs = crs_utm34n)
 # Create buffered polygon for grid filtering (buffer in meters)
 lith_poly_buffered <- st_buffer(lith_poly_utm, dist = LITHUANIA_BUFFER_KM * 1000)
 
-cat("Lithuania border loaded with", LITHUANIA_BUFFER_KM, "km buffer\n")
+c("Lithuania border loaded with", LITHUANIA_BUFFER_KM, "km buffer\n")
 
 # Extract coordinates for plotting (in km)
 coords_all <- st_coordinates(lith_poly_utm)
@@ -207,9 +207,9 @@ L_max <- max_dist / 5
 
 L_opt <- max(L_min, min(L0, L_max))
 
-cat("Point density (r):", round(r, 4), "points/km^2\n")
-cat("Optimal grid size (L_opt):", round(L_opt, 3), "km\n")
-cat("Constraints: L_min =", round(L_min, 3), ", L_max =", round(L_max, 3), "\n")
+c("Point density (r):", round(r, 4), "points/km^2\n")
+c("Optimal grid size (L_opt):", round(L_opt, 3), "km\n")
+c("Constraints: L_min =", round(L_min, 3), ", L_max =", round(L_max, 3), "\n")
 
 #==================== 8. CREATE COMMON PREDICTION GRID ====================
 
@@ -233,7 +233,7 @@ prediction_grid_full <- expand.grid(
 prediction_grid_full$x_utm <- prediction_grid_full$x + x_centroid
 prediction_grid_full$y_utm <- prediction_grid_full$y + y_centroid
 
-cat("Initial grid:", nrow(prediction_grid_full), "cells\n")
+c("Initial grid:", nrow(prediction_grid_full), "cells\n")
 
 plot(prediction_grid_full$x, prediction_grid_full$y, pch = 20, cex = 0.5,
      xlab = "X (km)", ylab = "Y (km)", main = "Initial Prediction Grid")
@@ -254,9 +254,9 @@ prediction_grid <- prediction_grid_full[within_lithuania, ]
 # Re-assign grid cell IDs after filtering
 prediction_grid$grid_cell_id <- seq_len(nrow(prediction_grid))
 
-cat("Grid cells within Lithuania (+", LITHUANIA_BUFFER_KM, "km buffer):",
+c("Grid cells within Lithuania (+", LITHUANIA_BUFFER_KM, "km buffer):",
     nrow(prediction_grid), "cells\n")
-cat("Grid resolution:", round(L_opt, 3), "km\n")
+c("Grid resolution:", round(L_opt, 3), "km\n")
 
 plot(prediction_grid$x, prediction_grid$y, pch = 20, cex = 0.5,
      xlab = "X (km)", ylab = "Y (km)", main = "Filtered Prediction Grid (within Lithuania)")
@@ -265,8 +265,8 @@ plot(prediction_grid$x, prediction_grid$y, pch = 20, cex = 0.5,
 
 # Explore data distributions and check for outliers/skewness
 
-cat("\n--- Data Exploration ---\n")
-cat("Checking distributions for each variable...\n\n")
+c("\n--- Data Exploration ---\n")
+c("Checking distributions for each variable...\n\n")
 
 for (var in VARIABLES_TO_KRIGE) {
   var_values <- grid_opt_data[[var]]
@@ -275,15 +275,15 @@ for (var in VARIABLES_TO_KRIGE) {
   var_label <- get_var_label(var, include_unit = TRUE)
 
   # Basic statistics
-  cat(var_label, ":\n")
-  cat("  n =", length(var_values), "\n")
-  cat("  Range:", round(min(var_values), 3), "-", round(max(var_values), 3), "\n")
-  cat("  Mean:", round(mean(var_values), 3), ", Median:", round(median(var_values), 3), "\n")
-  cat("  Skewness:", round((mean(var_values) - median(var_values)) / sd(var_values), 3), "(approx)\n\n")
+  c(var_label, ":\n")
+  c("  n =", length(var_values), "\n")
+  c("  Range:", round(min(var_values), 3), "-", round(max(var_values), 3), "\n")
+  c("  Mean:", round(mean(var_values), 3), ", Median:", round(median(var_values), 3), "\n")
+  c("  Skewness:", round((mean(var_values) - median(var_values)) / sd(var_values), 3), "(approx)\n\n")
 }
 
 # Create distribution plots for each variable
-cat("Creating distribution plots...\n")
+c("Creating distribution plots...\n")
 
 for (var in VARIABLES_TO_KRIGE) {
   var_values <- grid_opt_data[[var]]
@@ -309,7 +309,7 @@ for (var in VARIABLES_TO_KRIGE) {
   dev.off()
 }
 
-cat("Distribution plots saved to:", PLOTS_DIR, "\n")
+c("Distribution plots saved to:", PLOTS_DIR, "\n")
 
 #==================== 10. FIT VARIOGRAM MODELS (POOLED ACROSS YEARS) ====
 
@@ -386,7 +386,7 @@ fit_best_variogram <- function(data_df, var_name, coords_centred, max_dist_vario
   best_idx <- which.min(sapply(results, `[[`, "SSQ"))
   best <- results[[best_idx]]
 
-  cat("  ", var_name, "-> Best model:", best$name,
+  c("  ", var_name, "-> Best model:", best$name,
       "(SSQ =", round(best$SSQ, 4), ")\n")
 
   return(list(
@@ -404,13 +404,13 @@ fit_best_variogram <- function(data_df, var_name, coords_centred, max_dist_vario
 # 2. Edge effects at large distances (points can only pair in limited directions)
 # 3. The variogram range (where spatial correlation disappears) is typically much smaller
 max_dist_vario <- max_dist * 0.6
-cat("Max distance for variogram:", round(max_dist_vario, 2), "km\n")
+c("Max distance for variogram:", round(max_dist_vario, 2), "km\n")
 
 # Fit models for each variable using the averaged (grid optimization) dataset
 variogram_models <- list()
 
 for (var in VARIABLES_TO_KRIGE) {
-  cat("Fitting variogram for:", var, "\n")
+  c("Fitting variogram for:", var, "\n")
 
   model_result <- fit_best_variogram(
     data_df = grid_opt_data,
@@ -424,7 +424,7 @@ for (var in VARIABLES_TO_KRIGE) {
   }
 }
 
-cat("\nVariogram models fitted for", length(variogram_models), "variables\n")
+c("\nVariogram models fitted for", length(variogram_models), "variables\n")
 
 #==================== 10a. ANISOTROPY CHECK ====
 
@@ -433,11 +433,11 @@ cat("\nVariogram models fitted for", length(variogram_models), "variables\n")
 # If directional variograms are similar, isotropy assumption is reasonable
 # If they differ substantially, anisotropic kriging may be needed
 
-cat("\n--- Anisotropy Check (Directional Variograms) ---\n")
-cat("Creating variog4 plots for each variable...\n")
+c("\n--- Anisotropy Check (Directional Variograms) ---\n")
+c("Creating variog4 plots for each variable...\n")
 
 for (var in names(variogram_models)) {
-  cat("Checking anisotropy:", var, "\n")
+  c("Checking anisotropy:", var, "\n")
 
   # Get variable data
   var_values <- grid_opt_data[[var]]
@@ -471,12 +471,12 @@ for (var in names(variogram_models)) {
   dev.off()
 }
 
-cat("Anisotropy plots saved to:", PLOTS_DIR, "\n")
+c("Anisotropy plots saved to:", PLOTS_DIR, "\n")
 
 #==================== 10b. SPATIAL AUTOCORRELATION ANALYSIS ====
 
-cat("\n--- Spatial Autocorrelation Analysis ---\n")
-cat("Calculating Moran's I and variogram-based metrics for each variable...\n\n")
+c("\n--- Spatial Autocorrelation Analysis ---\n")
+c("Calculating Moran's I and variogram-based metrics for each variable...\n\n")
 
 # Create spatial weights matrix for Moran's I (using k-nearest neighbors)
 coords_matrix <- as.matrix(grid_opt_coords_centred)
@@ -516,7 +516,7 @@ spatial_autocorr_results <- data.frame(
 variogram_data_list <- list()
 
 for (var in names(variogram_models)) {
-  cat("Analyzing:", var, "\n")
+  c("Analyzing:", var, "\n")
 
   # Get variable values (remove NAs)
   var_values <- grid_opt_data[[var]]
@@ -527,7 +527,7 @@ for (var in names(variogram_models)) {
   coords_valid <- coords_matrix[valid_idx, ]
 
   if (length(var_valid) < 30) {
-    cat("  Insufficient data, skipping\n")
+    c("  Insufficient data, skipping\n")
     next
   }
 
@@ -614,24 +614,24 @@ for (var in names(variogram_models)) {
     trend = model_info$trend
   ))
 
-  cat("  Moran's I (knn):",
+  c("  Moran's I (knn):",
       ifelse(!is.null(moran_knn), round(moran_knn$estimate["Moran I statistic"], 3), "NA"),
       "| Effective range:", round(effective_range, 1), "km",
       "| SDI:", round(sdi, 3), "\n")
 }
 
 # Print spatial autocorrelation summary
-cat("\n========== SPATIAL AUTOCORRELATION SUMMARY ==========\n")
-cat("\nMoran's I interpretation:\n")
-cat("  > 0: Positive spatial autocorrelation (similar values cluster)\n")
-cat("  ≈ 0: Random spatial pattern\n")
-cat("  < 0: Negative spatial autocorrelation (dissimilar values cluster)\n")
-cat("\nSpatial Dependence Index (SDI) interpretation:\n")
-cat("  > 0.75: Strong spatial structure (good for typology)\n")
-cat("  0.50-0.75: Moderate spatial structure\n")
-cat("  0.25-0.50: Weak spatial structure\n")
-cat("  < 0.25: Very weak/random (may not add value to typology)\n")
-cat("\n")
+c("\n========== SPATIAL AUTOCORRELATION SUMMARY ==========\n")
+c("\nMoran's I interpretation:\n")
+c("  > 0: Positive spatial autocorrelation (similar values cluster)\n")
+c("  ≈ 0: Random spatial pattern\n")
+c("  < 0: Negative spatial autocorrelation (dissimilar values cluster)\n")
+c("\nSpatial Dependence Index (SDI) interpretation:\n")
+c("  > 0.75: Strong spatial structure (good for typology)\n")
+c("  0.50-0.75: Moderate spatial structure\n")
+c("  0.25-0.50: Weak spatial structure\n")
+c("  < 0.25: Very weak/random (may not add value to typology)\n")
+c("\n")
 
 # Sort by SDI descending
 spatial_autocorr_results <- spatial_autocorr_results[order(-spatial_autocorr_results$spatial_dependence_index), ]
@@ -642,7 +642,7 @@ print_cols <- c("variable", "morans_I_knn", "morans_I_pvalue", "effective_range_
 print(spatial_autocorr_results[, print_cols], row.names = FALSE)
 
 # Classification for typology suitability
-cat("\n--- Variable Classification for Typology ---\n")
+c("\n--- Variable Classification for Typology ---\n")
 for (i in seq_len(nrow(spatial_autocorr_results))) {
   var <- spatial_autocorr_results$variable[i]
   var_label <- get_var_label(var, include_unit = TRUE)
@@ -665,21 +665,21 @@ for (i in seq_len(nrow(spatial_autocorr_results))) {
                 ifelse(!is.na(pval) && pval < 0.01, "**",
                        ifelse(!is.na(pval) && pval < 0.05, "*", "")))
 
-  cat(sprintf("  %-35s SDI=%.3f, Moran's I=%.3f%s, Range=%.0fkm -> %s\n",
+  c(sprintf("  %-35s SDI=%.3f, Moran's I=%.3f%s, Range=%.0fkm -> %s\n",
               var_label, sdi, moran, sig, range_km, suitability))
 }
 
 # Save spatial autocorrelation results
 autocorr_outfile <- file.path(OUTPUT_DIR, "kriging_spatial_autocorrelation.xlsx")
 write_xlsx(spatial_autocorr_results, autocorr_outfile)
-cat("\nSpatial autocorrelation results saved to:", autocorr_outfile, "\n")
+c("\nSpatial autocorrelation results saved to:", autocorr_outfile, "\n")
 
 # Create variogram comparison plot
-cat("\n--- Creating variogram plots ---\n")
+c("\n--- Creating variogram plots ---\n")
 
 # Individual variogram plots
 for (var in names(variogram_data_list)) {
-  cat("Plotting variogram:", var, "\n")
+  c("Plotting variogram:", var, "\n")
 
   vario_data <- variogram_data_list[[var]]
   emp_vario <- vario_data$empirical
@@ -746,7 +746,7 @@ for (var in names(variogram_data_list)) {
 }
 
 # Create summary bar plot comparing SDI across variables
-cat("Creating spatial autocorrelation summary plot...\n")
+c("Creating spatial autocorrelation summary plot...\n")
 
 sdi_plot_data <- spatial_autocorr_results |>
   mutate(
@@ -788,14 +788,14 @@ p_sdi <- ggplot(sdi_plot_data, aes(x = reorder(var_label, spatial_dependence_ind
 outfile <- file.path(PLOTS_DIR, "spatial_autocorrelation_summary.png")
 ggsave(outfile, p_sdi, width = 10, height = 6, dpi = 300, bg = "white")
 
-cat("Spatial autocorrelation plots saved to:", PLOTS_DIR, "\n")
+c("Spatial autocorrelation plots saved to:", PLOTS_DIR, "\n")
 
 #==================== 11. PERFORM KRIGING FOR EACH YEAR AND VARIABLE ====
 
-cat("\n--- Performing kriging for each year and variable ---\n")
+c("\n--- Performing kriging for each year and variable ---\n")
 
 years <- sort(unique(raw_data[[year_col]]))
-cat("Years to process:", paste(years, collapse = ", "), "\n\n")
+c("Years to process:", paste(years, collapse = ", "), "\n\n")
 
 # Initialize results storage
 all_results <- list()
@@ -807,7 +807,7 @@ raw_data$x_centred <- raw_data$x_utm - x_centroid
 raw_data$y_centred <- raw_data$y_utm - y_centroid
 
 for (yr in years) {
-  cat("Processing year:", yr, "\n")
+  c("Processing year:", yr, "\n")
 
   year_data <- raw_data |>
     filter(.data[[year_col]] == yr)
@@ -829,7 +829,7 @@ for (yr in years) {
       summarise(z = mean(z, na.rm = TRUE), .groups = "drop")
 
     if (nrow(var_data) < 20) {
-      cat("  ", var, "- insufficient data (n =", nrow(var_data), "), skipping\n")
+      c("  ", var, "- insufficient data (n =", nrow(var_data), "), skipping\n")
       year_results[[var]] <- NA
       next
     }
@@ -853,29 +853,29 @@ for (yr in years) {
       )
 
       year_results[[var]] <- krig_result$predict
-      cat("  ", var, "- done (n =", nrow(var_data), "points)\n")
+      c("  ", var, "- done (n =", nrow(var_data), "points)\n")
 
     }, error = function(e) {
-      cat("  ", var, "- ERROR:", conditionMessage(e), "\n")
+      c("  ", var, "- ERROR:", conditionMessage(e), "\n")
       year_results[[var]] <<- NA
     })
   }
 
   all_results[[as.character(yr)]] <- year_results
-  cat("\n")
+  c("\n")
 }
 
 #==================== 12. COMBINE ANNUAL RESULTS ====
 
-cat("--- Combining results ---\n")
+c("--- Combining results ---\n")
 
 results_df <- bind_rows(all_results)
 
-cat("Combined results:", nrow(results_df), "rows x", ncol(results_df), "cols\n")
+c("Combined results:", nrow(results_df), "rows x", ncol(results_df), "cols\n")
 
 #==================== 13. CALCULATE MULTI-YEAR AVERAGED INTERPOLATIONS ====
 
-cat("\n--- Calculating multi-year averages ---\n")
+c("\n--- Calculating multi-year averages ---\n")
 
 averaged_results <- results_df |>
   group_by(grid_cell_id, x_utm, y_utm) |>
@@ -885,23 +885,23 @@ averaged_results <- results_df |>
     .groups = "drop"
   )
 
-cat("Averaged results:", nrow(averaged_results), "grid cells\n")
+c("Averaged results:", nrow(averaged_results), "grid cells\n")
 
 #==================== 14. EXPORT RESULTS ====
 
-cat("\n--- Saving results to Excel ---\n")
+c("\n--- Saving results to Excel ---\n")
 
 if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
 
 # Save annual results
 annual_outfile <- file.path(OUTPUT_DIR, "kriging_annual_interpolations.xlsx")
 write_xlsx(results_df, annual_outfile)
-cat("Annual results saved to:", annual_outfile, "\n")
+c("Annual results saved to:", annual_outfile, "\n")
 
 # Save averaged results
 averaged_outfile <- file.path(OUTPUT_DIR, "kriging_averaged_interpolations.xlsx")
 write_xlsx(averaged_results, averaged_outfile)
-cat("Averaged results saved to:", averaged_outfile, "\n")
+c("Averaged results saved to:", averaged_outfile, "\n")
 
 # Save grid metadata
 grid_metadata <- data.frame(
@@ -931,11 +931,11 @@ grid_metadata <- data.frame(
 
 metadata_outfile <- file.path(OUTPUT_DIR, "kriging_grid_metadata.xlsx")
 write_xlsx(grid_metadata, metadata_outfile)
-cat("Grid metadata saved to:", metadata_outfile, "\n")
+c("Grid metadata saved to:", metadata_outfile, "\n")
 
 #==================== 15. PLOT AVERAGED INTERPOLATIONS ====
 
-cat("\n--- Creating averaged interpolation plots ---\n")
+c("\n--- Creating averaged interpolation plots ---\n")
 
 if (!dir.exists(PLOTS_DIR)) dir.create(PLOTS_DIR, recursive = TRUE)
 
@@ -944,7 +944,7 @@ xlim_plot <- range(lith_coords_utm[, 1]) + c(-10, 10)
 ylim_plot <- range(lith_coords_utm[, 2]) + c(-10, 10)
 
 for (var in names(variogram_models)) {
-  cat("Plotting:", var, "\n")
+  c("Plotting:", var, "\n")
 
   # Get pretty label with unit for legend
   legend_label <- get_var_label(var, include_unit = TRUE)
@@ -1013,11 +1013,11 @@ for (var in names(variogram_models)) {
   ggsave(outfile, p, width = 10, height = 8, dpi = 450, bg = "white")
 }
 
-cat("\nPlots saved to:", PLOTS_DIR, "\n")
+c("\nPlots saved to:", PLOTS_DIR, "\n")
 
 #==================== 16. CROSS-VALIDATION ANALYSIS ====
 
-cat("\n--- Cross-validation: Observed vs Interpolated ---\n")
+c("\n--- Cross-validation: Observed vs Interpolated ---\n")
 
 # For each variable, compare observed site averages with interpolated values
 # at the nearest grid cell
@@ -1074,7 +1074,7 @@ for (var in names(variogram_models)) {
   int_valid <- interpolated_vals[valid_idx]
 
   if (length(obs_valid) < 10) {
-    cat("  ", var, "- insufficient valid pairs, skipping\n")
+    c("  ", var, "- insufficient valid pairs, skipping\n")
     next
   }
 
@@ -1099,25 +1099,25 @@ for (var in names(variogram_models)) {
     interpolated = int_valid
   )
 
-  cat("  ", var, ": r =", round(pearson_r, 3),
+  c("  ", var, ": r =", round(pearson_r, 3),
       ", rho =", round(spearman_rho, 3),
       ", RMSE =", round(rmse, 3), "\n")
 }
 
 # Print cross-validation metrics table
-cat("\nCross-validation metrics summary:\n")
+c("\nCross-validation metrics summary:\n")
 print(cv_metrics, row.names = FALSE)
 
 # Save cross-validation metrics
 cv_outfile <- file.path(OUTPUT_DIR, "kriging_cross_validation_metrics.xlsx")
 write_xlsx(cv_metrics, cv_outfile)
-cat("\nCross-validation metrics saved to:", cv_outfile, "\n")
+c("\nCross-validation metrics saved to:", cv_outfile, "\n")
 
 # Create cross-validation plots (observed vs interpolated)
-cat("\n--- Creating cross-validation plots ---\n")
+c("\n--- Creating cross-validation plots ---\n")
 
 for (var in names(cv_results)) {
-  cat("Plotting CV:", var, "\n")
+  c("Plotting CV:", var, "\n")
 
   # Get pretty labels
   var_label <- get_var_label(var, include_unit = TRUE)
@@ -1149,23 +1149,23 @@ for (var in names(cv_results)) {
   ggsave(outfile, p, width = 8, height = 8, dpi = 450, bg = "white")
 }
 
-cat("Cross-validation plots saved to:", PLOTS_DIR, "\n")
+c("Cross-validation plots saved to:", PLOTS_DIR, "\n")
 
 #==================== 17. SUMMARY ====
 
-cat("\n==================== SUMMARY ====================\n")
-cat("Variables interpolated:", paste(names(variogram_models), collapse = ", "), "\n")
-cat("Years processed:", length(years), "(", min(years), "-", max(years), ")\n")
-cat("Grid cells:", nrow(prediction_grid), "\n")
-cat("Grid resolution:", round(L_opt, 3), "km\n")
-cat("\nVariogram models used:\n")
+c("\n==================== SUMMARY ====================\n")
+c("Variables interpolated:", paste(names(variogram_models), collapse = ", "), "\n")
+c("Years processed:", length(years), "(", min(years), "-", max(years), ")\n")
+c("Grid cells:", nrow(prediction_grid), "\n")
+c("Grid resolution:", round(L_opt, 3), "km\n")
+c("\nVariogram models used:\n")
 for (var in names(variogram_models)) {
-  cat("  ", var, ":", variogram_models[[var]]$model_name, "\n")
+  c("  ", var, ":", variogram_models[[var]]$model_name, "\n")
 }
-cat("\nOutput files:\n")
-cat("  Annual interpolations:", annual_outfile, "\n")
-cat("  Averaged interpolations:", averaged_outfile, "\n")
-cat("  Grid metadata:", metadata_outfile, "\n")
-cat("  Plots directory:", PLOTS_DIR, "\n")
-cat("================================================\n")
+c("\nOutput files:\n")
+c("  Annual interpolations:", annual_outfile, "\n")
+c("  Averaged interpolations:", averaged_outfile, "\n")
+c("  Grid metadata:", metadata_outfile, "\n")
+c("  Plots directory:", PLOTS_DIR, "\n")
+c("================================================\n")
 
