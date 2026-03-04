@@ -19,53 +19,254 @@
 
 ## Code ####
 
-riv_net_stat <- function(net, plot = F){
-  # required packages
-  require(c("dplyr", "sfnetworks", "tmap"))
+riv_net_stat <- function(net, sink_nodes = NULL, plot = F){
 
   # disable traceback
   options(error = NULL)
 
-  # check for right class
+  # check for right net input
   if(!("sfnetwork"  %in% class(net))){
-    stop("input must be a sf_network object!")
+    stop("net must be a sfnetwork object!", .call = F)
   }
 
   # check for right plot input
-  if(!is.bool(plot)){
-    stop("plot must be TRUE or FALSE")
+  if(!is.logical(plot)){
+    stop("plot must be TRUE or FALSE!", .call = F)
   }
 
-  # get edge info
-  edges <- st_as_sf(net, "edges")
-  if(!("geom" %in% colnames(edges))){
-    edges <- rename(edges, "geom" = attr(edges, "sf_column"))}
-  edges %>% distinct(geom, .keep_all = T)
-  unc_edges <- edges %>% filter(!(to  %in%  from))
-  crash_edges <- edges %>% group_by(to) %>% filter((n() > 1) & !(to  %in% edges$from)) %>% ungroup()
-  nodes <- st_as_sf(net, "nodes") %>% mutate("ID" = rownames(.))
+    # get edge info
+    edges <- st_as_sf(net, "edges")
+    if(!("geom" %in% colnames(edges))){
+      edges <- rename(edges, "geom" = attr(edges, "sf_column"))}
+    edges <- edges %>% distinct(geom, .keep_all = T)
+    unc_edges <- edges %>% filter(!(to  %in%  from))
+    src_edges <- edges %>% filter(!(from  %in%  to))
+    conv_edges <- edges %>% filter(to %in% from) %>% group_by(to) %>% filter(n() > 1)
+    div_edges <- edges %>% filter(from %in% to) %>% group_by(from) %>% filter(n() > 1)
+    crash_edges <- edges %>% filter(!(to  %in% from)) %>% group_by(to) %>% filter(n() > 1)
+    mltsrc_edges <- edges %>% filter(!(from %in% to)) %>% group_by(from) %>% filter(n() > 1)
 
-  # print info
-  cat(
-    "total edges:", nrow(edges), "\n",
-    "number of sources:", filter(edges, !(from %in% to)) %>% nrow(), "\n",
-    "unconnected & sink edges:",unc_edges %>% nrow(), "\n",
-    "number of diverging edges:", group_by(edges, from) %>% filter(n() > 1) %>% nrow(), "\n",
-    "number of crashflow edges:", group_by(edges, to) %>% filter((n() > 1) & !(to  %in% edges$from)) %>% nrow()
-  )
+    nodes <- st_as_sf(net, "nodes") %>% mutate("ID" = rownames(.))
+
+    if(is.null(sink_nodes)){
+
+    # print info
+    cat(
+      "total edges:", nrow(edges), "\n",
+      "sources:", src_edges %>% nrow(), "\n",
+      "unconnected & sink edges:",unc_edges %>% nrow(), "\n",
+      "convergences:", nodes %>% filter(ID  %in% conv_edges$to) %>% nrow(), "\n",
+      "divergences:", nodes %>% filter(ID  %in% div_edges$from) %>% nrow(), "\n",
+      "crashflows:", crash_edges %>% nrow()/2, "\n",
+      "multi-edge sources:", mltsrc_edges %>% nrow()/2
+      )
+
+    } else {
+
+      # check for sink_nodes presence in net
+      if("sf" %in% class(sink_nodes)){
+        if(any(st_geometry_type(sink_nodes) != "POINT")){
+          stop("sink_nodes must have POINT geometry!")
+        }
+        else{
+          if(!any(sink_nodes$geom %in% st_as_sf(net, "nodes")$geom)){
+            stop("sink_nodes geom not present in network!")
+          }
+        }
+
+      }
+      else{
+        if(!any(sink_nodes %in% rownames(st_as_sf(net, "nodes")))){
+          stop("sink_nodes IDs not present in network!")
+          }
+        }
+
+      # get edge info
+      if("sf" %in% class(sink_nodes)){
+        sink_edges <- edges %>% st_filter(sink_nodes, .predicate = st_touches)
+        unc_edges <- edges %>% filter(!(to  %in%  from | geom  %in% sink_edges$geom))
+        sink_nodes <- st_geometry_type(sink_nodes)
+      }
+
+      else{
+      unc_edges <- edges %>% filter(!(to  %in%  from | to  %in% sink_nodes))
+      }
+
+      # print info
+      cat(
+        "total edges:", nrow(edges), "\n",
+        "sources:", src_edges %>% nrow(), "\n",
+        "sinks:", sink_nodes %>% length(), "\n",
+        "convergences:", nodes %>% filter(ID  %in% conv_edges$to) %>% nrow(), "\n",
+        "divergences:", nodes %>% filter(ID  %in% div_edges$from) %>% nrow(), "\n",
+        "crashflows:", crash_edges %>% nrow()/2, "\n",
+        "multi-edge sources:", mltsrc_edges %>% nrow()/2
+      )
+      }
 
   # plot
   if(plot == T) {
     tm_shape(filter(edges, !(to %in% from)), name = "unconnected edges")+tm_lines(lwd = 3, id = "to", col = "orange")+
       tm_shape(filter(edges, !(geom %in% unc_edges$geom)), name = "connected edges")+tm_lines(lwd = 3, id = "to", col = "darkgreen")+
       tm_shape(filter(nodes, ID  %in% unc_edges$to), name = "unconnected nodes")+tm_dots(col = "darkred")+
-      tm_shape(filter(nodes, ID  %in% crash_edges$to), name = "crashflow nodes")+tm_dots(col = "red")
+      tm_shape(filter(nodes, ID  %in% div_edges$from), name = "divergence nodes")+tm_dots(col = "white")+
+      tm_shape(filter(nodes, ID  %in% crash_edges$to), name = "crashflow nodes")+tm_dots(col = "red")+
+      tm_shape(filter(nodes, ID  %in% mltsrc_edges$from), name = "multi-edge sources")+tm_dots(col = "violet")
   }
 }
 
+riv_net_connect <- function(net, sink_nodes = NULL, round_coords = NULL, blend_tol = Inf){
+
+  # disable traceback
+  options(error = NULL)
+
+  # check for right class
+  if(!("sfnetwork"  %in% class(net))){
+    stop("net must be a sfnetwork object!", .call = F)
+  }
+
+  # check for right precision input
+  if(!is.null(round_coords)){
+    if(!is.numeric(round_coords)){
+      stop("precision must be a numeric value!", .call = F)
+      }
+    }
+
+  #check right input for blend_tol
+  if(!is.numeric(blend_tol)){
+    stop("precision must be a numeric value!", .call = F)
+  }
+
+  # check for right length unit
+  if(st_crs(net, parameters = T)$units_gdal != "metre"){
+    stop("net CRS must have metre as length unit!")
+  }
+
+  # check right sink_nodes input
+  if(is.null(sink_nodes)){
+    stop("must provide sink_nodes to connect network correctly!")
+  }
+
+  # get edges and nodes
+  edges <- st_as_sf(net, "edges")
+  if(!("geom" %in% colnames(edges))){
+    edges <- rename(edges, "geom" = attr(edges, "sf_column"))}
+  edges <- edges %>% distinct(geom, .keep_all = T)
+
+  nodes <-  st_as_sf(net, "nodes") %>% mutate("ID" = rownames(.))
+  if(!("geom" %in% colnames(nodes))){
+    edges <- rename(nodes, "geom" = attr(nodes, "sf_column"))}
+  nodes <- nodes %>% distinct(geom, .keep_all = T)
+
+  # check for sink nodes presence
+  if("sf" %in% class(sink_nodes)){
+    if(any(st_geometry_type(sink_nodes) != "POINT")){
+      stop("sink_nodes must have POINT geometry!")
+    }
+    else{
+      if(!any(sink_nodes$geom %in% st_as_sf(net, "nodes")$geom)){
+        stop("sink_nodes geom not present in network!")
+      }
+    }
+
+  }
+  else{
+    if(!any(sink_nodes %in% rownames(st_as_sf(net, "nodes")))){
+      stop("sink_nodes IDs not present in network!")
+    }
+  }
+
+  # sink edges
+  if("sf" %in% class(sink_nodes)){
+    sink_edges <- edges %>% st_filter(sink_nodes, .predicate = st_touches)
+  }
+  else{
+    sink_edges <- edges %>% filter(to  %in%  sink_nodes)
+  }
+
+  # identify unconnected edges
+  unc_edges <- edges %>% filter(!(to %in% from | geom  %in% sink_edges$geom))
+  unc_edges_prev <- 0
+
+  # loop untill number of unconnected edges stays constant
+  while(!(nrow(unc_edges) == unc_edges_prev)){
+
+    # override value
+    unc_edges_prev <- nrow(unc_edges)
+
+    # override nodes from new net
+    nodes <- net %>% st_as_sf("nodes") %>% mutate("ID" = rownames(.))
+    unc_nodes <- nodes %>% filter(ID  %in% unc_edges$to)
+
+    # blend in unconnected nodes
+    net_2 <- edges %>% filter(!(geom  %in% unc_edges$geom)) %>% as_sfnetwork() %>%
+      st_network_blend(unc_nodes, tolerance = set_units(blend_tol, "m"))
+
+    # get sf of edges
+    edges_2 <- st_as_sf(net_2, "edges")
+
+    # round coordinates
+    if(!is.null(round_coords)){
+      if(st_is_longlat(net)){
+        st_geometry(edges_2) <- st_geometry(edges_2) %>%
+          lapply(function(x) round(x, round_coords)) %>%
+          st_sfc(crs = st_crs(edges_2))
+
+        st_geometry(sink_edges) <- st_geometry(sink_edges) %>%
+          lapply(function(x) round(x, round_coords)) %>%
+          st_sfc(crs = st_crs(sink_edges))
+
+        st_geometry(unc_edges) <- st_geometry(unc_edges) %>%
+          lapply(function(x) round(x, round_coords)) %>%
+          st_sfc(crs = st_crs(unc_edges))
+        }
+
+      else{
+        st_geometry(edges_2) <- st_geometry(edges_2) %>%
+          lapply(function(x) round(x, -round_coords)) %>%
+          st_sfc(crs = st_crs(edges_2))
+
+        st_geometry(sink_edges) <- st_geometry(sink_edges) %>%
+          lapply(function(x) round(x, -round_coords)) %>%
+          st_sfc(crs = st_crs(sink_edges))
+
+        st_geometry(unc_edges) <- st_geometry(unc_edges) %>%
+          lapply(function(x) round(x, -round_coords)) %>%
+          st_sfc(crs = st_crs(unc_edges))
+        }
+      }
+
+    # combine with unconnected edges
+    net <- bind_rows(edges_2, unc_edges) %>% as_sfnetwork() %>% convert(to_spatial_smooth)
+
+    # override edges from new net
+    edges <- net %>% st_as_sf("edges")
+    unc_edges <- edges %>% filter(!(to %in% from | geom  %in% sink_edges$geom))
+  }
+
+  return(net)
+}
+
+riv_net_reverse <- function(net, edge_index){
+
+  # check for right net input
+  if(!("sfnetwork"  %in% class(net))){
+    stop("net must be a sfnetwork object!", .call = F)
+  }
+
+  # check for right edge_index input
+  if(!any(edge_index %in% unlist(st_as_sf(net, "edges"), ".tidygraph_edge_index"))){
+    stop("edge_index not found in net")
+  }
+
+  net %>% st_as_sf("edges") %>%
+    mutate(geom = case_when(.tidygraph_edge_index  %in% edge_index ~ st_reverse(geom), .default = geom)) %>%
+    as_sfnetwork() %>%
+  return(.)
+
+}
+
 riv_net_shreve <- function(net, start) {
-  # required packages
-  require(c("dplyr", "sfnetworks"))
 
   # disable traceback
   options(error = NULL)
